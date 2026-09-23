@@ -42,7 +42,12 @@ export default function App() {
 
   // Fetch all stored data from MongoDB backend API
   useEffect(() => {
-    fetch('http://localhost:5000/api/data')
+    // Local-ah iruntha localhost:5000-m, Live-ku poitta Render URL-m automatic-ah eduthukkum
+    const API_URL = import.meta.env.MODE === 'development' 
+      ? 'http://localhost:5000' 
+      : 'https://gac-udt.onrender.com';
+
+    fetch(`${API_URL}/api/data`)
       .then(res => res.json())
       .then(data => {
         if (data) {
@@ -103,7 +108,12 @@ export default function App() {
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:5000/api/admin/login', {
+      // Local-ah iruntha localhost:5000-m, Live-ku poitta Render URL-m automatic-ah eduthukkum
+      const API_URL = import.meta.env.MODE === 'development' 
+        ? 'http://localhost:5000' 
+        : 'https://gac-udt.onrender.com';
+
+      const response = await fetch(`${API_URL}/api/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: loginUsername, password: loginPassword })
@@ -127,7 +137,12 @@ export default function App() {
   const handleTeacherLogin = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:5000/api/teacher/login', {
+      // Local-ah iruntha localhost:5000-m, Live-ku poitta Render URL-m automatic-ah eduthukkum
+      const API_URL = import.meta.env.MODE === 'development' 
+        ? 'http://localhost:5000' 
+        : 'https://gac-udt.onrender.com';
+
+      const response = await fetch(`${API_URL}/api/teacher/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: teacherUsername, password: teacherPassword })

@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+// Local-ah iruntha localhost:5000-m, Live-ku poitta Render URL-m automatic-ah eduthukkum
+const API_URL = import.meta.env.MODE === 'development' 
+  ? 'http://localhost:5000' 
+  : 'https://gac-udt.onrender.com';
+
+const API_BASE_URL = `${API_URL}/api`;
 
 export default function AdminComponent({ onBack }) {
   const [activeTab, setActiveTab] = useState('dashboard');
