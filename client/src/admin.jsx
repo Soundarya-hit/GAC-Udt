@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 
-// Local-ah iruntha localhost:5000-m, Live-ku poitta Render URL-m automatic-ah eduthukkum
 const API_URL = import.meta.env.MODE === 'development' 
   ? 'http://localhost:5000' 
   : 'https://gac-udt.onrender.com';
@@ -16,6 +15,8 @@ export default function AdminComponent({ onBack }) {
   const [departmentsList, setDepartmentsList] = useState([]);
   const [servicesList, setServicesList] = useState([]);
   const [achieversList, setAchieversList] = useState([]);
+  const [labGalleryList, setLabGalleryList] = useState([]);
+  const [resourcesList, setResourcesList] = useState([]); // Fixed: Added resource list state
   
   const [stats, setStats] = useState({ students: '', staff: '', experience: '' });
   const [aboutUsText, setAboutUsText] = useState('');
@@ -25,10 +26,8 @@ export default function AdminComponent({ onBack }) {
   const [principalInfo, setPrincipalInfo] = useState({ name: '', designation: '', photo: '', message: '' });
   const [siteConfig, setSiteConfig] = useState({ logo: '', bgVideo: '' });
   
-  // Admin Credentials State
   const [adminCredentials, setAdminCredentials] = useState({ username: '', password: '' });
 
-  // Form / Edit States
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({});
 
@@ -49,6 +48,8 @@ export default function AdminComponent({ onBack }) {
         if (data.departments) setDepartmentsList(data.departments);
         if (data.services) setServicesList(data.services);
         if (data.achievers) setAchieversList(data.achievers);
+        if (data.labs) setLabGalleryList(data.labs);
+        if (data.resources) setResourcesList(data.resources); // Fixed: Properly mapping resources from DB
         if (data.config) {
           setStats(data.config.stats || { students: '', staff: '', experience: '' });
           setAboutUsText(data.config.aboutUsText || '');
@@ -73,6 +74,26 @@ export default function AdminComponent({ onBack }) {
       reader.onloadend = () => callback(reader.result);
       reader.readAsDataURL(file);
     }
+  };
+
+  const handleMultipleFilesUpload = (e, callback) => {
+    const files = Array.from(e.target.files);
+    let uploadedImages = [];
+    let processedCount = 0;
+
+    if (files.length === 0) return;
+
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        uploadedImages.push(reader.result);
+        processedCount++;
+        if (processedCount === files.length) {
+          callback(uploadedImages);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const updateConfigInDB = async (updatedFields) => {
@@ -103,7 +124,6 @@ export default function AdminComponent({ onBack }) {
     }
   };
 
-  // Generic Save / Add / Update Handler for Collections
   const handleSaveItem = async (e, endpoint, list, setList, resetForm) => {
     e.preventDefault();
     try {
@@ -128,7 +148,7 @@ export default function AdminComponent({ onBack }) {
         alert('Added successfully to database!');
       }
       setFormData({});
-      if(resetForm) resetForm.reset();
+      if(resetForm && typeof resetForm.reset === 'function') resetForm.reset();
     } catch (err) {
       console.error('Error saving item:', err);
     }
@@ -167,8 +187,9 @@ export default function AdminComponent({ onBack }) {
           { id: 'dashboard', label: '📊 Dashboard' },
           { id: 'stats', label: '📈 Students & Staff Counts' },
           { id: 'principal', label: '👤 Principal Profile' },
-          { id: 'about', label: '🏛️ About, Mission & Vision' },
-          { id: 'departments', label: '📖 Departments' },
+          { id: 'about', label: '🏛 About, Mission & Vision' },
+          { id: 'departments', label: '🏛️ Departments & Banners' },
+          { id: 'resources', label: '📁 Documents & Resources' },
           { id: 'notices', label: '📢 Notices & Invitations' },
           { id: 'news', label: '📰 News Gallery' },
           { id: 'photos', label: '🖼️ Photo Album' },
@@ -191,7 +212,6 @@ export default function AdminComponent({ onBack }) {
         
         {activeTab === 'dashboard' && (
           <div>
-            {/* TOP HEADER WITH COLLEGE NAME & LIVE CLOCK */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', backgroundColor: '#FFFFFF', padding: '30px 35px', borderRadius: '16px', border: '1px solid #E8D4D6', borderLeft: '8px solid #551A38', boxShadow: '0 8px 25px rgba(85,26,56,0.08)', marginBottom: '35px' }}>
               <div>
                 <span style={{ fontSize: '12px', color: '#9B516F', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>Welcome Admin Portal</span>
@@ -207,7 +227,6 @@ export default function AdminComponent({ onBack }) {
               </div>
             </div>
 
-            {/* STATS COUNT CARDS */}
             <h3 style={{ color: '#551A38', fontFamily: 'serif', fontSize: '22px', marginBottom: '20px' }}>📈 Institutional Overview Counts</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
               <div style={{ backgroundColor: '#FFFFFF', padding: '25px', borderRadius: '12px', border: '1px solid #E8D4D6', boxShadow: '0 4px 15px rgba(85,26,56,0.05)', borderTop: '4px solid #551A38', textAlign: 'center' }}>
@@ -234,13 +253,9 @@ export default function AdminComponent({ onBack }) {
           </div>
         )}
 
-        {/* ADMIN CREDENTIALS MANAGEMENT */}
         {activeTab === 'credentials' && (
           <div style={{ backgroundColor: '#FFFFFF', padding: '35px', borderRadius: '12px', borderLeft: '6px solid #551A38' }}>
             <h3 style={{ color: '#551A38', marginTop: 0, fontFamily: 'serif' }}>🔐 Admin Username & Password Settings</h3>
-            <p style={{ fontSize: '13px', color: '#554148', marginBottom: '20px' }}>
-              Update your Admin Username and Password here. Once updated, it will be saved directly to the database and required for all future admin portal logins.
-            </p>
             <form onSubmit={async (e) => { 
               e.preventDefault(); 
               await updateConfigInDB({ 
@@ -325,7 +340,36 @@ export default function AdminComponent({ onBack }) {
             <form onSubmit={(e) => handleSaveItem(e, 'departments', departmentsList, setDepartmentsList, e.target)} style={{ backgroundColor: '#F9F1F0', padding: '20px', borderRadius: '8px', marginBottom: '25px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input type="text" placeholder="Department Name" value={formData.name || ''} onChange={(e) => setFormData({...formData, name: e.target.value})} required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
               <input type="text" placeholder="Tag (UG · PG)" value={formData.tag || ''} onChange={(e) => setFormData({...formData, tag: e.target.value})} required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
-              <textarea placeholder="Description" rows="2" value={formData.desc || ''} onChange={(e) => setFormData({...formData, desc: e.target.value})} required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}></textarea>
+              
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px' }}>Department Banner Image</label>
+                <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, (url) => setFormData({...formData, image: url}))} />
+                {formData.image && <img src={formData.image} alt="Preview" style={{ width: '80px', height: '50px', objectFit: 'cover', marginTop: '6px', borderRadius: '4px' }} />}
+              </div>
+
+              <textarea placeholder="Short Description / Course Curriculum Overview" rows="2" value={formData.desc || ''} onChange={(e) => setFormData({...formData, desc: e.target.value})} required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}></textarea>
+              <textarea placeholder="Lab Availabilities & Equipment details" rows="2" value={formData.labAvailabilities || ''} onChange={(e) => setFormData({...formData, labAvailabilities: e.target.value})} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}></textarea>
+              <textarea placeholder="Class Rooms & Infrastructure details" rows="2" value={formData.classRooms || ''} onChange={(e) => setFormData({...formData, classRooms: e.target.value})} style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}></textarea>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', marginBottom: '4px' }}>Lab & Department Photo Gallery Images (Multiple)</label>
+                <input type="file" accept="image/*" multiple onChange={(e) => handleMultipleFilesUpload(e, (urls) => {
+                  const existingGallery = formData.galleryImages || [];
+                  setFormData({...formData, galleryImages: [...existingGallery, ...urls]});
+                })} />
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                  {formData.galleryImages && formData.galleryImages.map((imgUrl, idx) => (
+                    <div key={idx} style={{ position: 'relative' }}>
+                      <img src={imgUrl} alt="Gallery Preview" style={{ width: '60px', height: '45px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #ccc' }} />
+                      <button type="button" onClick={() => {
+                        const updatedGallery = formData.galleryImages.filter((_, i) => i !== idx);
+                        setFormData({...formData, galleryImages: updatedGallery});
+                      }} style={{ position: 'absolute', top: '-5px', right: '-5px', background: 'red', color: 'white', border: 'none', borderRadius: '50%', width: '16px', height: '16px', fontSize: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <button type="submit" style={{ backgroundColor: '#551A38', color: '#F3C3C7', border: 'none', padding: '10px', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>{editingId ? 'Update Department' : 'Add Department'}</button>
               {editingId && <button type="button" onClick={() => { setEditingId(null); setFormData({}); }} style={{ background: '#ccc', border: 'none', padding: '6px', cursor: 'pointer', borderRadius: '4px' }}>Cancel Edit</button>}
             </form>
@@ -333,9 +377,15 @@ export default function AdminComponent({ onBack }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {departmentsList.map((dept) => (
                 <div key={dept._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 15px', backgroundColor: '#FAFAFA', border: '1px solid #E8D4D6', borderRadius: '6px' }}>
-                  <div>
-                    <strong>{dept.name}</strong> <span style={{ fontSize: '11px', background: '#551A38', color: '#FFF', padding: '2px 6px', borderRadius: '4px' }}>{dept.tag}</span>
-                    <p style={{ margin: '4px 0 0 0', fontSize: '13px' }}>{dept.desc}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    {dept.image && <img src={dept.image} alt="" style={{ width: '50px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />}
+                    <div>
+                      <strong>{dept.name}</strong> <span style={{ fontSize: '11px', background: '#551A38', color: '#FFF', padding: '2px 6px', borderRadius: '4px' }}>{dept.tag}</span>
+                      <p style={{ margin: '4px 0 0 0', fontSize: '13px' }}>{dept.desc}</p>
+                      {dept.galleryImages && dept.galleryImages.length > 0 && (
+                        <span style={{ fontSize: '11px', color: '#9B516F', fontWeight: 'bold' }}>📸 {dept.galleryImages.length} gallery photos added</span>
+                      )}
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={() => { setEditingId(dept._id); setFormData(dept); }} style={{ background: '#2B7AD9', color: '#FFF', border: 'none', padding: '6px 10px', borderRadius: '4px', cursor: 'pointer' }}>Edit</button>
@@ -343,6 +393,163 @@ export default function AdminComponent({ onBack }) {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* DOCUMENTS & RESOURCES MANAGEMENT (Fixed to properly persist to Database) */}
+        {activeTab === 'resources' && (
+          <div style={{ backgroundColor: '#FFFFFF', padding: '35px', borderRadius: '12px', borderLeft: '6px solid #551A38' }}>
+            <h3 style={{ color: '#551A38', marginTop: 0, fontFamily: 'serif' }}>📁 Documents & Resources Management</h3>
+            
+            <div style={{ marginTop: '15px', padding: '20px', background: '#Fdfcfc', border: '1px solid #E8D4D6', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              
+              {/* OPTION 1: DIRECT DOCUMENT / FILE UPLOAD */}
+              <div style={{ padding: '15px', background: '#FFF', border: '1px solid #E8D4D6', borderRadius: '6px' }}>
+                <h4 style={{ margin: '0 0 10px 0', color: '#551A38', fontSize: '14px' }}>Option 1: Upload Documents / Files (PDF, CSV, Images, etc.)</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Document Title (e.g. Semester Syllabus PDF)" 
+                    id="docResTitle"
+                    style={{ padding: '8px', fontSize: '12px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  />
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', color: '#666', marginBottom: '4px' }}>Choose File from Computer:</label>
+                    <input 
+                      type="file" 
+                      accept=".pdf,.csv,image/*,video/*,.doc,.docx" 
+                      id="docResFile"
+                      style={{ fontSize: '12px' }} 
+                    />
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={async () => {
+                      const titleEl = document.getElementById('docResTitle');
+                      const fileEl = document.getElementById('docResFile');
+
+                      if (!titleEl.value || fileEl.files.length === 0) {
+                        alert('Please enter a title and select a document file!');
+                        return;
+                      }
+
+                      const file = fileEl.files[0];
+                      const reader = new FileReader();
+                      reader.onloadend = async () => {
+                        const fileUrl = reader.result;
+                        const fileType = file.name.endsWith('.csv') ? 'csv' : (file.name.endsWith('.pdf') ? 'pdf' : 'document');
+                        
+                        const newResourceData = { title: titleEl.value, type: fileType, url: fileUrl };
+
+                        try {
+                          const res = await fetch(`${API_BASE_URL}/resources`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(newResourceData)
+                          });
+                          const saved = await res.json();
+                          setResourcesList([saved, ...resourcesList]);
+                          
+                          titleEl.value = '';
+                          fileEl.value = '';
+                          alert('Document uploaded and saved successfully to Database!');
+                        } catch (err) {
+                          console.error('Error saving document resource:', err);
+                        }
+                      };
+                      reader.readAsDataURL(file);
+                    }}
+                    style={{ background: '#551A38', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px', alignSelf: 'flex-start' }}
+                  >
+                    Upload Document
+                  </button>
+                </div>
+              </div>
+
+              {/* OPTION 2: EXTERNAL LINK / URL UPLOAD */}
+              <div style={{ padding: '15px', background: '#FFF', border: '1px solid #E8D4D6', borderRadius: '6px' }}>
+                <h4 style={{ margin: '0 0 10px 0', color: '#551A38', fontSize: '14px' }}>Option 2: Add External Video / Web Link</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Link Title (e.g. Online Lecture Video / Portal Link)" 
+                    id="linkResTitle"
+                    style={{ padding: '8px', fontSize: '12px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  />
+                  <input 
+                    type="url" 
+                    placeholder="Paste URL here (e.g. https://youtube.com/...)" 
+                    id="linkResUrl"
+                    style={{ padding: '8px', fontSize: '12px', borderRadius: '4px', border: '1px solid #ccc' }}
+                  />
+                  <button 
+                    type="button" 
+                    onClick={async () => {
+                      const titleEl = document.getElementById('linkResTitle');
+                      const urlEl = document.getElementById('linkResUrl');
+
+                      if (!titleEl.value || !urlEl.value) {
+                        alert('Please enter a link title and paste the URL!');
+                        return;
+                      }
+
+                      const newResourceData = { title: titleEl.value, type: 'link', url: urlEl.value };
+
+                      try {
+                        const res = await fetch(`${API_BASE_URL}/resources`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(newResourceData)
+                        });
+                        const saved = await res.json();
+                        setResourcesList([saved, ...resourcesList]);
+                        
+                        titleEl.value = '';
+                        urlEl.value = '';
+                        alert('Link added and saved successfully to Database!');
+                      } catch (err) {
+                        console.error('Error saving link resource:', err);
+                      }
+                    }}
+                    style={{ background: '#9B516F', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '12px', alignSelf: 'flex-start' }}
+                  >
+                    Add Link
+                  </button>
+                </div>
+              </div>
+
+              {/* Display Added Resources List with Remove Option */}
+              <div>
+                <h4 style={{ margin: '0 0 8px 0', color: '#551A38', fontSize: '13px' }}>Existing Resources List:</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '250px', overflowY: 'auto' }}>
+                  {resourcesList.map((res) => (
+                    <div key={res._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', padding: '8px 12px', borderRadius: '4px', border: '1px solid #E8D4D6', fontSize: '13px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span>
+                          {res.type === 'pdf' && '📄'}
+                          {res.type === 'csv' && '📊'}
+                          {res.type === 'document' && '📑'}
+                          {res.type === 'link' && '🔗'}
+                        </span>
+                        <strong>{res.title}</strong> 
+                        <span style={{ color: '#888', fontSize: '11px' }}>({res.type ? res.type.toUpperCase() : 'DOCUMENT'})</span>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={() => handleDeleteItem('resources', res._id, resourcesList, setResourcesList)}
+                        style={{ background: '#D9822B', color: '#fff', border: 'none', borderRadius: '4px', padding: '4px 8px', fontSize: '11px', cursor: 'pointer' }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  {resourcesList.length === 0 && (
+                    <p style={{ fontSize: '13px', color: '#888', fontStyle: 'italic', margin: '0' }}>No documents or resources added yet.</p>
+                  )}
+                </div>
+              </div>
+
             </div>
           </div>
         )}
@@ -404,6 +611,7 @@ export default function AdminComponent({ onBack }) {
             <form onSubmit={(e) => handleSaveItem(e, 'photos', photoAlbumList, setPhotoAlbumList, e.target)} style={{ backgroundColor: '#F9F1F0', padding: '20px', borderRadius: '8px', marginBottom: '25px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <input type="text" placeholder="Title" value={formData.title || ''} onChange={(e) => setFormData({...formData, title: e.target.value})} required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
               <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, (url) => setFormData({...formData, image: url}))} />
+              {formData.image && <img src={formData.image} alt="Preview" style={{ width: '80px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />}
               <textarea placeholder="Description" rows="2" value={formData.desc || ''} onChange={(e) => setFormData({...formData, desc: e.target.value})} required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}></textarea>
               <button type="submit" style={{ backgroundColor: '#D9822B', color: '#FFF', border: 'none', padding: '10px', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>{editingId ? 'Update Photo' : 'Upload Photo'}</button>
               {editingId && <button type="button" onClick={() => { setEditingId(null); setFormData({}); }} style={{ background: '#ccc', border: 'none', padding: '6px', cursor: 'pointer', borderRadius: '4px' }}>Cancel Edit</button>}
@@ -434,6 +642,7 @@ export default function AdminComponent({ onBack }) {
               <input type="text" placeholder="Name" value={formData.name || ''} onChange={(e) => setFormData({...formData, name: e.target.value})} required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
               <input type="text" placeholder="Department / Category" value={formData.dept || ''} onChange={(e) => setFormData({...formData, dept: e.target.value})} required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
               <input type="file" accept="image/*" onChange={(e) => handleFileUpload(e, (url) => setFormData({...formData, photo: url}))} />
+              {formData.photo && <img src={formData.photo} alt="Preview" style={{ width: '50px', height: '50px', borderRadius: '50%', objectFit: 'cover' }} />}
               <textarea placeholder="Achievement Description" rows="2" value={formData.desc || ''} onChange={(e) => setFormData({...formData, desc: e.target.value})} required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }}></textarea>
               <button type="submit" style={{ backgroundColor: '#551A38', color: '#F3C3C7', border: 'none', padding: '10px', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>{editingId ? 'Update Achiever' : 'Add Achiever'}</button>
               {editingId && <button type="button" onClick={() => { setEditingId(null); setFormData({}); }} style={{ background: '#ccc', border: 'none', padding: '6px', cursor: 'pointer', borderRadius: '4px' }}>Cancel Edit</button>}
@@ -484,7 +693,7 @@ export default function AdminComponent({ onBack }) {
               <input type="text" value={contactInfo.address} onChange={(e) => setContactInfo({...contactInfo, address: e.target.value})} placeholder="Address" required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
               <input type="text" value={contactInfo.phone} onChange={(e) => setContactInfo({...contactInfo, phone: e.target.value})} placeholder="Phone" required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
               <input type="text" value={contactInfo.email} onChange={(e) => setContactInfo({...contactInfo, email: e.target.value})} placeholder="Email" required style={{ padding: '10px', borderRadius: '6px', border: '1px solid #ccc' }} />
-              <button type="submit" style={{ backgroundColor: '#9B516F', color: '#FFF', border: 'none', padding: '12px', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>Save Contact Info</button>
+             <button type="submit" style={{ backgroundColor: '#9B516F', color: '#FFF', border: 'none', padding: '12px', fontWeight: 'bold', borderRadius: '6px', cursor: 'pointer' }}>Save Contact Info</button>
             </form>
           </div>
         )}

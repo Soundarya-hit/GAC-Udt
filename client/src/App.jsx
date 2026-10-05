@@ -22,6 +22,13 @@ export default function App() {
   const [isPhotoGalleryOpen, setIsPhotoGalleryOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
 
+  // ---> [ADDED HERE: Download Modal State] <---
+  const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
+  const [documentsList, setDocumentsList] = useState([]);
+
+  // ---> [ADDED HERE: Department Detail View State] <---
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
+
   const [currentAlbumPage, setCurrentAlbumPage] = useState(0);
   const [flipDirection, setFlipDirection] = useState(null);
 
@@ -42,7 +49,6 @@ export default function App() {
 
   // Fetch all stored data from MongoDB backend API
   useEffect(() => {
-    // Local-ah iruntha localhost:5000-m, Live-ku poitta Render URL-m automatic-ah eduthukkum
     const API_URL = import.meta.env.MODE === 'development' 
       ? 'http://localhost:5000' 
       : 'https://gac-udt.onrender.com';
@@ -57,6 +63,17 @@ export default function App() {
           if (data.departments) setDepartmentsList(data.departments);
           if (data.services) setServicesList(data.services);
           if (data.achievers) setAchieversList(data.achievers);
+          // Documents fetching support (if available in backend data or default empty array)
+          if (data.documents) {
+            setDocumentsList(data.documents);
+          } else {
+            // Mock sample documents for testing descending order if backend doesn't have it yet
+            setDocumentsList([
+              { _id: '1', title: 'Academic Calendar 2026', date: '2026-09-15', fileUrl: '#' },
+              { _id: '2', title: 'Semester Exam Guidelines', date: '2026-09-28', fileUrl: '#' },
+              { _id: '3', title: 'Sports Meet Circular', date: '2026-08-10', fileUrl: '#' }
+            ]);
+          }
           if (data.config) {
             if (data.config.stats) setStats(data.config.stats);
             if (data.config.aboutUsText) setAboutUsText(data.config.aboutUsText);
@@ -108,7 +125,6 @@ export default function App() {
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     try {
-      // Local-ah iruntha localhost:5000-m, Live-ku poitta Render URL-m automatic-ah eduthukkum
       const API_URL = import.meta.env.MODE === 'development' 
         ? 'http://localhost:5000' 
         : 'https://gac-udt.onrender.com';
@@ -137,7 +153,6 @@ export default function App() {
   const handleTeacherLogin = async (e) => {
     e.preventDefault();
     try {
-      // Local-ah iruntha localhost:5000-m, Live-ku poitta Render URL-m automatic-ah eduthukkum
       const API_URL = import.meta.env.MODE === 'development' 
         ? 'http://localhost:5000' 
         : 'https://gac-udt.onrender.com';
@@ -190,6 +205,9 @@ export default function App() {
     }
   };
 
+  // Sorting documents in descending date order (Newest first)
+  const sortedDocuments = [...documentsList].sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0));
+
   return (
     <div style={{ backgroundColor: '#F7EBE8', color: '#551A38', minHeight: '100vh', fontFamily: 'sans-serif', margin: 0, padding: 0 }}>
       <style>{`
@@ -228,13 +246,21 @@ export default function App() {
       <nav style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 40px', background: '#551A38', position: 'sticky', top: 0, zIndex: 1000, boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
           <img src={siteConfig.logo || "/logo.png"} alt="College Logo" style={{ width: '45px', height: '45px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #F3C3C7' }} />
-          <h2 style={{ color: '#F7EBE8', margin: 0, cursor: 'pointer', fontSize: '20px', letterSpacing: '0.5px', fontFamily: 'serif' }} onClick={() => setView('home')}>
+          <h2 style={{ color: '#F7EBE8', margin: 0, cursor: 'pointer', fontSize: '20px', letterSpacing: '0.5px', fontFamily: 'serif' }} onClick={() => { setView('home'); setSelectedDepartment(null); }}>
             Government Arts College <span style={{ fontSize: '11px', display: 'block', color: '#F3C3C7', letterSpacing: '2px', fontWeight: 'normal' }}>UDUMALPET</span>
           </h2>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px', position: 'relative' }}>
-          <div style={{ display: 'flex', gap: '15px', fontSize: '14px', color: '#F3C3C7' }}>
-            <span style={{ cursor: 'pointer' }} onClick={() => { setView('home'); setTimeout(() => window.scrollTo({top: 650, behavior: 'smooth'}), 100); }}>Home</span>
+          <div style={{ display: 'flex', gap: '15px', fontSize: '14px', color: '#F3C3C7', alignItems: 'center' }}>
+            <span style={{ cursor: 'pointer' }} onClick={() => { setView('home'); setSelectedDepartment(null); setTimeout(() => window.scrollTo({top: 650, behavior: 'smooth'}), 100); }}>Home</span>
+            
+            {/* ---> [ADDED HERE: Download Menu Item right next to Home] <--- */}
+            <span 
+              style={{ cursor: 'pointer', fontWeight: 'bold', backgroundColor: '', padding: '6px 12px', borderRadius: '0px',  }} 
+              onClick={() => setIsDownloadModalOpen(true)}
+            >
+               Download Center
+            </span>
           </div>
 
           <div style={{ position: 'relative' }}>
@@ -281,6 +307,7 @@ export default function App() {
         </div>
       </nav>
 
+      {/* HOME VIEW (WITH CLICKABLE DEPARTMENT CARDS & IMAGES) */}
       {view === 'home' && (
         <div>
           {/* HERO & DYNAMIC BACKGROUND VIDEO SECTION */}
@@ -371,21 +398,39 @@ export default function App() {
             </div>
           </div>
 
-          {/* DEPARTMENTS BLOCK */}
+          {/* DEPARTMENTS BLOCK (UPDATED: CLICKABLE CARDS WITH IMAGES) */}
           <div style={{ padding: '80px 5%', background: '#551A38', width: '100%', boxSizing: 'border-box' }}>
             <div style={{ borderLeft: '6px solid #F3C3C7', paddingLeft: '25px', width: '100%', margin: '0 auto 60px auto' }}>
               <span style={{ color: '#F3C3C7', fontSize: '16px', letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 'bold' }}>Departments</span>
               <h2 style={{ fontSize: '50px', color: '#FFFFFF', margin: '15px 0 0 0', fontFamily: 'serif' }}>Our departments, one shared standard of excellence</h2>
+              <p style={{ color: '#E8D4D6', fontSize: '14px', marginTop: '10px' }}>Click any department card below to view full course info, lab details, and facilities.</p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '25px', width: '100%', margin: '0 auto' }}>
               {departmentsList.map((dept, index) => (
-                <div key={dept._id || index} style={{ backgroundColor: '#632545', border: '1px solid #824263', borderLeft: '5px solid #F3C3C7', borderRadius: '10px', padding: '30px', boxShadow: '0 4px 12px rgba(0,0,0,0.25)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <span style={{ fontSize: '22px' }}>📖</span>
-                    <span style={{ fontSize: '11px', background: '#551A38', color: '#F3C3C7', padding: '4px 10px', borderRadius: '4px', fontWeight: 'bold' }}>{dept.tag}</span>
+                <div 
+                  key={dept._id || index} 
+                  onClick={() => { setSelectedDepartment(dept); setView('department-detail'); window.scrollTo({top: 0, behavior: 'smooth'}); }}
+                  style={{ backgroundColor: '#632545', border: '1px solid #824263', borderLeft: '5px solid #F3C3C7', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.25)', cursor: 'pointer', transition: 'transform 0.2s ease, box-shadow 0.2s ease' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.4)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.25)'; }}
+                >
+                  {/* Department Image Display */}
+                  <div style={{ width: '100%', height: '160px', overflow: 'hidden', backgroundColor: '#551A38' }}>
+                    <img 
+                      src={dept.image || 'https://images.unsplash.com/photo-1562774053-701939374585?w=500&auto=format&fit=crop&q=80'} 
+                      alt={dept.name} 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    />
                   </div>
-                  <h3 style={{ color: '#FFFFFF', fontSize: '22px', margin: '0 0 10px 0' }}>{dept.name}</h3>
-                  <p style={{ color: '#E8D4D6', fontSize: '15px', margin: 0, lineHeight: '1.6' }}>{dept.desc}</p>
+                  <div style={{ padding: '25px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                      <span style={{ fontSize: '20px' }}>📖</span>
+                      <span style={{ fontSize: '11px', background: '#551A38', color: '#F3C3C7', padding: '4px 10px', borderRadius: '4px', fontWeight: 'bold' }}>{dept.tag}</span>
+                    </div>
+                    <h3 style={{ color: '#FFFFFF', fontSize: '22px', margin: '0 0 10px 0' }}>{dept.name}</h3>
+                    <p style={{ color: '#E8D4D6', fontSize: '14px', margin: 0, lineHeight: '1.6', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{dept.desc}</p>
+                    <span style={{ display: 'inline-block', marginTop: '15px', color: '#F3C3C7', fontSize: '13px', fontWeight: 'bold' }}>View Details & Labs →</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -496,6 +541,78 @@ export default function App() {
         </div>
       )}
 
+      {/* ---> [ADDED HERE: DEPARTMENT DETAIL VIEW SECTION] <--- */}
+      {view === 'department-detail' && selectedDepartment && (
+        <div style={{ padding: '60px 10%', backgroundColor: '#F7EBE8', minHeight: 'calc(100vh - 85px)', boxSizing: 'border-box' }}>
+          <button 
+            onClick={() => { setView('home'); setSelectedDepartment(null); }}
+            style={{ backgroundColor: '#551A38', color: '#F3C3C7', border: 'none', padding: '10px 20px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px', marginBottom: '25px', boxShadow: '0 4px 10px rgba(85,26,56,0.15)' }}
+          >
+            ← Back to Home
+          </button>
+
+          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', border: '1px solid #E8D4D6', borderLeft: '8px solid #551A38', overflow: 'hidden', boxShadow: '0 15px 35px rgba(85,26,56,0.08)' }}>
+            {/* Header Banner with Department Image */}
+            <div style={{ position: 'relative', width: '100%', height: '300px', backgroundColor: '#551A38' }}>
+              <img 
+                src={selectedDepartment.image || 'https://images.unsplash.com/photo-1562774053-701939374585?w=1000&auto=format&fit=crop&q=80'} 
+                alt={selectedDepartment.name} 
+                style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: '0.85' }} 
+              />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', background: 'linear-gradient(to top, rgba(85,26,56,0.95), transparent)', padding: '30px 40px', boxSizing: 'border-box' }}>
+                <span style={{ fontSize: '12px', background: '#F3C3C7', color: '#551A38', padding: '5px 14px', borderRadius: '20px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                  {selectedDepartment.tag || 'Academic Department'}
+                </span>
+                <h1 style={{ color: '#FFFFFF', fontSize: '38px', margin: '15px 0 5px 0', fontFamily: 'serif' }}>{selectedDepartment.name}</h1>
+              </div>
+            </div>
+
+            {/* Department Detailed Content Sections */}
+            <div style={{ padding: '45px' }}>
+              {/* Description about course */}
+              <div style={{ marginBottom: '40px' }}>
+                <h3 style={{ color: '#551A38', fontSize: '24px', fontFamily: 'serif', borderBottom: '2px solid #F3C3C7', paddingBottom: '10px', marginBottom: '15px' }}>About Course & Curriculum</h3>
+                <p style={{ color: '#554148', fontSize: '17px', lineHeight: '1.8', margin: 0 }}>
+                  {selectedDepartment.desc || selectedDepartment.courseDetails || 'Comprehensive undergraduate and postgraduate programs designed to build robust theoretical fundamentals and practical problem-solving skills under expert faculty mentorship.'}
+                </p>
+              </div>
+
+              {/* Grid for Lab Availabilities & Class Rooms */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', marginBottom: '40px' }}>
+                <div style={{ backgroundColor: '#F9F1F0', padding: '30px', borderRadius: '12px', border: '1px solid #E8D4D6', borderLeft: '5px solid #551A38' }}>
+                  <h4 style={{ color: '#551A38', fontSize: '20px', margin: '0 0 12px 0', fontFamily: 'serif' }}>🔬 Availabilities & Equipment</h4>
+                  <p style={{ color: '#554148', fontSize: '15px', lineHeight: '1.7', margin: 0 }}>
+                    {selectedDepartment.labAvailabilities || 'Fully equipped modern laboratories with high-speed computational systems, advanced apparatus, and dedicated working hours for practical sessions and research projects.'}
+                  </p>
+                </div>
+                <div style={{ backgroundColor: '#F9F1F0', padding: '30px', borderRadius: '12px', border: '1px solid #E8D4D6', borderLeft: '5px solid #9B516F' }}>
+                  <h4 style={{ color: '#551A38', fontSize: '20px', margin: '0 0 12px 0', fontFamily: 'serif' }}>🏫 Class Rooms & Infrastructure</h4>
+                  <p style={{ color: '#554148', fontSize: '15px', lineHeight: '1.7', margin: 0 }}>
+                    {selectedDepartment.classRooms || 'Spacious, well-ventilated smart lecture halls equipped with audio-visual presentation aids and ergonomic seating arrangements to foster interactive learning.'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Lab Photos Gallery Section */}
+              <div>
+                <h3 style={{ color: '#551A38', fontSize: '24px', fontFamily: 'serif', borderBottom: '2px solid #F3C3C7', paddingBottom: '10px', marginBottom: '20px' }}>Department Photo Gallery</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                  {(selectedDepartment.galleryImages && selectedDepartment.galleryImages.length > 0 ? selectedDepartment.galleryImages : [
+                    'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=500&auto=format&fit=crop&q=80',
+                    'https://images.unsplash.com/photo-1532094349884-543bc11b234d?w=500&auto=format&fit=crop&q=80',
+                    'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=500&auto=format&fit=crop&q=80'
+                  ]).map((photoUrl, pIndex) => (
+                    <div key={pIndex} style={{ borderRadius: '8px', overflow: 'hidden', border: '1px solid #E8D4D6', height: '200px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                      <img src={typeof photoUrl === 'string' ? photoUrl : photoUrl.image} alt="Lab facility" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ADMIN LOGIN VIEW */}
       {view === 'admin-login' && (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 85px)', backgroundColor: '#F7EBE8', padding: '20px' }}>
@@ -503,7 +620,6 @@ export default function App() {
             <div style={{ textAlign: 'center', marginBottom: '25px' }}>
               <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#F3C3C7', color: '#551A38', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '22px', fontFamily: 'serif', marginBottom: '10px' }}>G</div>
               <h2 style={{ color: '#551A38', margin: '0 0 5px 0', fontFamily: 'serif', fontSize: '26px' }}>Admin Portal Login</h2>
-              <p style={{ fontSize: '12px', color: '#666', margin: 0 }}></p>
             </div>
             {loginError && <div style={{ backgroundColor: '#FDF2F2', border: '1px solid #F5C6CB', color: '#721C24', padding: '10px 12px', borderRadius: '6px', fontSize: '12px', marginBottom: '20px', textAlign: 'center' }}>{loginError}</div>}
             <form onSubmit={handleAdminLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -602,6 +718,45 @@ export default function App() {
           contactInfo={contactInfo} setContactInfo={setContactInfo}
           principalInfo={principalInfo} setPrincipalInfo={setPrincipalInfo}
         />
+      )}
+
+      {/* ---> [ADDED HERE: 3/4 SIZE DOWNLOADS MODAL WINDOW] <--- */}
+      {isDownloadModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.7)', zIndex: 3500, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+          <div style={{ width: '75vw', height: '75vh', backgroundColor: '#FFFFFF', borderRadius: '12px', border: '3px solid #551A38', boxShadow: '0 20px 40px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ backgroundColor: '#551A38', color: '#F7EBE8', padding: '16px 25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '20px', fontFamily: 'serif', color: '#F3C3C7' }}>📥 Download Center</h3>
+              <button onClick={() => setIsDownloadModalOpen(false)} style={{ background: '#F3C3C7', border: 'none', color: '#551A38', width: '32px', height: '32px', borderRadius: '50%', fontSize: '16px', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
+            </div>
+            <div style={{ flex: 1, padding: '30px', overflowY: 'auto', backgroundColor: '#F9F1F0' }}>
+              {sortedDocuments.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#554148', fontSize: '16px', marginTop: '50px' }}>No documents uploaded yet.</p>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  {sortedDocuments.map((doc, index) => (
+                    <div key={doc._id || index} style={{ backgroundColor: '#FFFFFF', padding: '20px', borderRadius: '8px', border: '1px solid #E8D4D6', borderLeft: '6px solid #551A38', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 10px rgba(85,26,56,0.05)' }}>
+                      <div>
+                        <span style={{ fontSize: '11px', backgroundColor: '#F7EBE8', color: '#551A38', padding: '4px 10px', borderRadius: '4px', fontWeight: 'bold' }}>
+                          📅 {doc.date || doc.createdAt ? new Date(doc.date || doc.createdAt).toLocaleDateString() : 'Recent'}
+                        </span>
+                        <h4 style={{ margin: '8px 0 0 0', color: '#551A38', fontSize: '18px', fontFamily: 'serif' }}>{doc.title || doc.name || 'Untitled Document'}</h4>
+                      </div>
+                      <a 
+                        href={doc.fileUrl || doc.url || '#'} 
+                        target="_blank" 
+                        rel="noopener noreferrer" 
+                        download 
+                        style={{ backgroundColor: '#551A38', color: '#F3C3C7', padding: '10px 20px', borderRadius: '20px', textDecoration: 'none', fontWeight: 'bold', fontSize: '13px', boxShadow: '0 4px 10px rgba(85,26,56,0.2)' }}
+                      >
+                        Download ↓
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
 
       {/* PHOTO GALLERY MODAL */}
