@@ -26,6 +26,9 @@ export default function App() {
   const [isDownloadModalOpen, setIsDownloadModalOpen] = useState(false);
   const [documentsList, setDocumentsList] = useState([]);
 
+  // ---> [ADDED HERE: Document View State] <---
+  const [selectedDocumentForView, setSelectedDocumentForView] = useState(null);
+
   // ---> [ADDED HERE: Department Detail View State] <---
   const [selectedDepartment, setSelectedDepartment] = useState(null);
 
@@ -64,8 +67,8 @@ export default function App() {
           if (data.services) setServicesList(data.services);
           if (data.achievers) setAchieversList(data.achievers);
           // Documents fetching support (if available in backend data or default empty array)
-          if (data.documents) {
-            setDocumentsList(data.documents);
+          if (data.resources) {
+            setDocumentsList(data.resources);
           } else {
             // Mock sample documents for testing descending order if backend doesn't have it yet
             setDocumentsList([
@@ -720,7 +723,7 @@ export default function App() {
         />
       )}
 
-      {/* ---> [ADDED HERE: 3/4 SIZE DOWNLOADS MODAL WINDOW] <--- */}
+     {/* ---> [DOWNLOADS MODAL WINDOW & VIEW MODAL] <--- */}
       {isDownloadModalOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.7)', zIndex: 3500, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
           <div style={{ width: '75vw', height: '75vh', backgroundColor: '#FFFFFF', borderRadius: '12px', border: '3px solid #551A38', boxShadow: '0 20px 40px rgba(0,0,0,0.4)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -741,19 +744,54 @@ export default function App() {
                         </span>
                         <h4 style={{ margin: '8px 0 0 0', color: '#551A38', fontSize: '18px', fontFamily: 'serif' }}>{doc.title || doc.name || 'Untitled Document'}</h4>
                       </div>
-                      <a 
-                        href={doc.fileUrl || doc.url || '#'} 
-                        target="_blank" 
-                        rel="noopener noreferrer" 
-                        download 
-                        style={{ backgroundColor: '#551A38', color: '#F3C3C7', padding: '10px 20px', borderRadius: '20px', textDecoration: 'none', fontWeight: 'bold', fontSize: '13px', boxShadow: '0 4px 10px rgba(85,26,56,0.2)' }}
-                      >
-                        Download ↓
-                      </a>
+                      
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                        <a 
+                          href={doc.fileUrl || doc.url || '#'} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          download 
+                          style={{ backgroundColor: '#551A38', color: '#F3C3C7', padding: '10px 20px', borderRadius: '20px', textDecoration: 'none', fontWeight: 'bold', fontSize: '13px', boxShadow: '0 4px 10px rgba(85,26,56,0.2)' }}
+                        >
+                          Download ↓
+                        </a>
+                      </div>
                     </div>
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---> [DOCUMENT PREVIEW MODAL POPUP] <--- */}
+      {selectedDocumentForView && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.8)', zIndex: 4000, display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px' }}>
+          <div style={{ width: '85vw', height: '85vh', backgroundColor: '#FFFFFF', borderRadius: '12px', border: '3px solid #551A38', boxShadow: '0 25px 50px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ backgroundColor: '#551A38', color: '#F7EBE8', padding: '15px 25px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontFamily: 'serif', color: '#F3C3C7' }}>
+                📄 Preview: {selectedDocumentForView.title || selectedDocumentForView.name || 'Document'}
+              </h3>
+              <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                <a 
+                  href={selectedDocumentForView.fileUrl || selectedDocumentForView.url || '#'} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  download 
+                  style={{ backgroundColor: '#F3C3C7', color: '#551A38', padding: '6px 14px', borderRadius: '15px', textDecoration: 'none', fontWeight: 'bold', fontSize: '12px' }}
+                >
+                  Download ↓
+                </a>
+                <button onClick={() => setSelectedDocumentForView(null)} style={{ background: '#F3C3C7', border: 'none', color: '#551A38', width: '30px', height: '30px', borderRadius: '50%', fontSize: '15px', cursor: 'pointer', fontWeight: 'bold' }}>✕</button>
+              </div>
+            </div>
+            <div style={{ flex: 1, backgroundColor: '#F9F1F0', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+              <iframe 
+                src={selectedDocumentForView.fileUrl || selectedDocumentForView.url} 
+                title={selectedDocumentForView.title} 
+                style={{ width: '100%', height: '100%', border: 'none' }}
+              />
             </div>
           </div>
         </div>
